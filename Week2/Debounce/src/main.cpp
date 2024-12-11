@@ -36,7 +36,7 @@ void loop() {
     if (digitalRead(D6) == 1) { 
       count--; 
       if (count < 0) { 
-        count = 0; 
+        count = 9; 
       } 
       Serial.println(count); 
     }
