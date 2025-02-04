@@ -1,151 +1,86 @@
 #include <Arduino.h>
-#include <WiFiManager.h>
+#include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 #include <PubSubClient.h>
-#include <ArduinoJson.h>
+#include <ArduinoJson.h> // ใช้ไลบรารี ArduinoJson เพื่อจัดการกับ JSON
 
-// MQTT Configuration
-#define MQTT_SERVER "broker.emqx.io"
-#define MQTT_PORT 1883
-#define MQTT_TOPIC_INFO "Group1RealPeachInfo"
-#define MQTT_TOPIC_HELLO "Group1RealPeachHello"
-#define MQTT_NAME "emqx"
+#define MQTT_SERVER "broker.emqx.io" // Server Domain Name หรือ IP Address
+#define MQTT_PORT 1883 // Port ของ MQTT Broker
+#define MQTT_TOPIC_INFO "Group1RealpeachInfo" // ชื่อ Topic ส่งข้อมูลส่วนตัว
+#define MQTT_TOPIC_HELLO "Group1RealpeachHello" // ชื่อ Topic รับข้อความ hello
+#define MQTT_NAME "rmutt"
 
-// State definitions
-const int SEND_AND_CHECK = 0;
-const int SHOW_MESSAGE = 1;
-
-// Global variables
 WiFiClient client;
 PubSubClient mqtt(client);
+const int SEND_AND_CHECK = 0;
+const int SHOW_MESSAGE = 1;
 int state;
-StaticJsonDocument<200> doc_pub;
-StaticJsonDocument<200> doc_sub;
-char jsonBuffer[512];
-bool message_flag = false;
+
+bool message_flag;
 String message;
 
-// Enhanced MQTT callback for Node-RED messages
 void callback(char *topic, byte *payload, unsigned int length) {
-  // Clear existing message and set flag
-  message_flag = true;
-  message = "";
-  
-  // Print raw payload for debugging
-  Serial.println("\n----- New MQTT Message -----");
-  Serial.print("Raw payload: ");
+  message = ""; // ล้างข้อมูลที่เก็บไว้ในตัวแปร message
+  message_flag = true; // กำหนดค่า message_flag เป็น true เพื่อบอกให้รู้ว่ามีข้อมูลใหม่เข้ามา
   for (int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
-  }
-  Serial.println();
-  
-  // Convert payload to string
-  for (int i = 0; i < length; i++) {
-    message += (char)payload[i];
-  }
-  
-  // Print detailed debug info
-  Serial.println("Topic: " + String(topic));
-  Serial.println("Message length: " + String(length));
-  Serial.println("Decoded message: " + message);
-  Serial.println("--------------------------\n");
-
-  // Try to parse JSON if the message is in JSON format
-  DeserializationError error = deserializeJson(doc_sub, message);
-  if (!error) {
-    Serial.println("JSON parsed successfully");
-    serializeJsonPretty(doc_sub, Serial);
-    Serial.println();
-  }
-}
-
-void reconnect() {
-  while (!mqtt.connected()) {
-    Serial.print("Attempting MQTT connection...");
-    if (mqtt.connect(MQTT_NAME)) {
-      Serial.println("connected");
-      
-      // Subscribe and verify subscription
-      boolean subSuccess = mqtt.subscribe(MQTT_TOPIC_HELLO);
-      Serial.print("Subscription to ");
-      Serial.print(MQTT_TOPIC_HELLO);
-      Serial.println(subSuccess ? " successful" : " failed");
-      
-      // Print current MQTT state
-      Serial.print("MQTT State: ");
-      Serial.println(mqtt.state());
-    } else {
-      Serial.print("failed, rc=");
-      Serial.print(mqtt.state());
-      Serial.println(" retrying in 5 seconds");
-      delay(5000);
-    }
+    message += (char)payload[i]; // เก็บข้อมูลที่ได้รับไว้ในตัวแปร message
   }
 }
 
 void setup() {
-  // Start Serial with higher baud rate
   Serial.begin(115200);
-  Serial.println("\n\n----- Starting Setup -----");
   
-  // WiFiManager setup
   WiFiManager wm;
-  wm.resetSettings();
-  bool res = wm.autoConnect("Group1", "wifionly");
-  
-  if (!res) {
-    Serial.println("Failed to connect to WiFi");
-    ESP.restart();
+  bool res;
+  wm.resetSettings(); // ลบข้อมูลการเชื่อมต่อ WiFi ที่เคยบันทึกไว้
+  res = wm.autoConnect("Group1RealPeach"); // anonymous ap
+
+  if(!res) {
+    Serial.println("Failed to connect");
   } else {
-    Serial.println("Connected to WiFi");
-    Serial.print("IP Address: ");
-    Serial.println(WiFi.localIP());
+    Serial.println("connected...yeey :)");
   }
-  
-  // MQTT setup
-  mqtt.setServer(MQTT_SERVER, MQTT_PORT);
-  mqtt.setCallback(callback);
-  
+
   state = SEND_AND_CHECK;
-  Serial.println("----- Setup Complete -----\n");
+
+  mqtt.setServer(MQTT_SERVER, MQTT_PORT);
+  mqtt.connect(MQTT_NAME);
+  mqtt.setCallback(callback);
+  mqtt.subscribe(MQTT_TOPIC_HELLO);
 }
 
 void loop() {
   switch (state) {
     case SEND_AND_CHECK:
-      if (!mqtt.connected()) {
-        reconnect();
-      }
-      
-      mqtt.loop();
-      
-      // Publish status message
-      doc_pub.clear();
-      doc_pub["firstname"] = "Chusanapak";
-      doc_pub["lastname"] = "Fongmanee";
-      doc_pub["address"]["city"] = "Bangkok";
-      doc_pub["address"]["country"] = "Thailand";
-      serializeJson(doc_pub, jsonBuffer);
-      
-      if (mqtt.publish(MQTT_TOPIC_INFO, jsonBuffer)) {
-        Serial.println("Published message:");
-        serializeJsonPretty(doc_pub, Serial);
-        Serial.println();
-                state = SHOW_MESSAGE;
+      if (mqtt.connected()) {
+        mqtt.loop();
+        
+        // สร้าง JSON object
+        StaticJsonDocument<512> jsonDoc;
+        jsonDoc["name"] = "Chusanapak Fongmanee"; // ชื่อนักศึกษา
+        jsonDoc["address"]["city"] = "Bangkok"; // ชื่อเมือง
+        jsonDoc["address"]["postcode"] = "10000";
 
-      }
-      
-      if (message_flag) {
+
+        char jsonBuffer[200];
+        serializeJson(jsonDoc, jsonBuffer);
+
+        if (mqtt.publish(MQTT_TOPIC_INFO, jsonBuffer)) {
+          Serial.println("Success sending JSON");
+        } else {
+          Serial.println("Fail sending JSON");
+        }
+
+        if (message_flag) {
+          state = SHOW_MESSAGE;
+        }
       }
       delay(5000);
       break;
 
     case SHOW_MESSAGE:
-      Serial.println("\n----- Displaying Received Message -----");
-      Serial.println("Message from Node-RED: " + message);
-      Serial.println("-------------------------------------\n");
+      Serial.println("Received message: " + message);
       message_flag = false;
       state = SEND_AND_CHECK;
-      delay(5000);
       break;
   }
 }
