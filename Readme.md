@@ -26,7 +26,7 @@
 <p align="center">
 <img src="https://readme-typing-svg.demolab.com?font=Noto+Sans+Display&weight=900&pause=500&color=70ff8f&center=true&multiline=true&width=435&height=150&lines=CHUSANAPAK+FONGMANEE;116630462001-4;04621303-63;Internet+Of+Things" alt="Typing SVG" />
 <img align="right" src="https://spotify-github-profile.kittinanx.com/api/view?uid=x8y5pbcf4lqyx53c1r12fxnxw&cover_image=true&theme=default&show_offline=false&background_color=70ff8f&interchange=false&bar_color=70ff8f&bar_color_cover=true" />
-<img src="https://lanyard.kyrie25.me/api/307566588805251082?waveColor=70ff8f&waveSpotifyColor=70ff8f&gradient=70ff8f&useDisplayName=true"/>
+<img src="https://lanyard.cnrad.dev/api/307566588805251082"/>
 <p align="center">
 <a href="https://justcatnip.xyz">
 <img align height="50" width="50" src="https://cdn.simpleicons.org/googlechrome/70ff8f" /></a>
